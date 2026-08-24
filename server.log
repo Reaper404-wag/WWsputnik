@@ -1,0 +1,63 @@
+INFO:     Started server process [14248]
+INFO:     Waiting for application startup.
+2026-03-21 12:08:05,146 [INFO] [OK] DB initialized: sqlite:///./sputnik.db
+2026-03-21 12:08:05,389 [INFO] [STARTUP] Admin user created (admin/admin)
+2026-03-21 12:08:05,390 [INFO] [STARTUP] Starting TLE data fetch...
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+2026-03-21 12:08:07,045 [INFO] [TLE] stations: +30 / ~0 / err=0
+2026-03-21 12:08:07,046 [INFO] [TLE] Updated group 'stations': {'group': 'stations', 'added': 30, 'updated': 0, 'errors': 0, 'total': 30}
+2026-03-21 12:08:08,368 [INFO] [TLE] military: +22 / ~0 / err=0
+2026-03-21 12:08:08,368 [INFO] [TLE] Updated group 'military': {'group': 'military', 'added': 22, 'updated': 0, 'errors': 0, 'total': 22}
+2026-03-21 12:08:09,797 [INFO] [TLE] weather: +70 / ~0 / err=0
+2026-03-21 12:08:09,797 [INFO] [TLE] Updated group 'weather': {'group': 'weather', 'added': 70, 'updated': 0, 'errors': 0, 'total': 70}
+2026-03-21 12:08:11,371 [INFO] [TLE] resource: +162 / ~0 / err=0
+2026-03-21 12:08:11,371 [INFO] [TLE] Updated group 'resource': {'group': 'resource', 'added': 162, 'updated': 0, 'errors': 0, 'total': 162}
+INFO:     127.0.0.1:57439 - "GET /health HTTP/1.1" 200 OK
+2026-03-21 12:08:24,369 [INFO] ============================================================
+2026-03-21 12:08:24,369 [INFO] [EMAIL SIMULATION] To: test@example.com
+2026-03-21 12:08:24,369 [INFO] [EMAIL SIMULATION] Subject: SPUTNIK — Подтверждение email
+2026-03-21 12:08:24,369 [INFO] [EMAIL SIMULATION] Body (HTML stripped):
+2026-03-21 12:08:24,370 [INFO]   LINK: http://localhost:5500/earth_visualizer.html#confirm=QPPMEoL5ezDMfuG8aoubGWMcoC0qVLbWPvoN2cHptQs
+2026-03-21 12:08:24,370 [INFO] ============================================================
+INFO:     127.0.0.1:57462 - "POST /auth/register HTTP/1.1" 201 Created
+2026-03-21 12:08:27,918 [INFO] [TLE] starlink: +9888 / ~0 / err=0
+2026-03-21 12:08:27,919 [INFO] [TLE] Updated group 'starlink': {'group': 'starlink', 'added': 9888, 'updated': 0, 'errors': 0, 'total': 9888}
+2026-03-21 12:08:27,919 [INFO] [STARTUP] TLE update complete: 10172 satellites loaded
+INFO:     127.0.0.1:58273 - "GET /passes/regions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /satellites/tle-data?group=stations&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /satellites/tle-data?group=military&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /satellites/tle-data?group=weather&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /satellites/tle-data?group=resource&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /satellites/tle-data?group=starlink&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /satellites/?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "OPTIONS /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58274 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58275 - "OPTIONS /auth/register HTTP/1.1" 200 OK
+2026-03-21 12:16:04,203 [INFO] ============================================================
+2026-03-21 12:16:04,203 [INFO] [EMAIL SIMULATION] To: sportytdr@gmai.com
+2026-03-21 12:16:04,203 [INFO] [EMAIL SIMULATION] Subject: SPUTNIK — Подтверждение email
+2026-03-21 12:16:04,204 [INFO] [EMAIL SIMULATION] Body (HTML stripped):
+2026-03-21 12:16:04,204 [INFO]   LINK: http://localhost:5500/earth_visualizer.html#confirm=ot-6h6RDwLticq1xUjyWIVCGt_5-4YvMCz0KqKmFigM
+2026-03-21 12:16:04,204 [INFO] ============================================================
+INFO:     127.0.0.1:58275 - "POST /auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:58275 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58275 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58275 - "OPTIONS /favorites/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58275 - "GET /favorites/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58317 - "OPTIONS /auth/resend-confirmation HTTP/1.1" 200 OK
+2026-03-21 12:16:13,920 [INFO] ============================================================
+2026-03-21 12:16:13,920 [INFO] [EMAIL SIMULATION] To: sportytdr@gmai.com
+2026-03-21 12:16:13,920 [INFO] [EMAIL SIMULATION] Subject: SPUTNIK — Подтверждение email
+2026-03-21 12:16:13,921 [INFO] [EMAIL SIMULATION] Body (HTML stripped):
+2026-03-21 12:16:13,921 [INFO]   LINK: http://localhost:5500/earth_visualizer.html#confirm=pzvZ_iX3cdd-P63H3B16DuCnDGPY_D68c3n98Tn03bs
+2026-03-21 12:16:13,921 [INFO] ============================================================
+INFO:     127.0.0.1:58317 - "POST /auth/resend-confirmation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58648 - "POST /auth/register HTTP/1.1" 400 Bad Request
+2026-03-21 12:17:50,456 [INFO] ============================================================
+2026-03-21 12:17:50,457 [INFO] [EMAIL SIMULATION] To: test2@example.com
+2026-03-21 12:17:50,457 [INFO] [EMAIL SIMULATION] Subject: SPUTNIK — Подтверждение email
+2026-03-21 12:17:50,457 [INFO] [EMAIL SIMULATION] Body (HTML stripped):
+2026-03-21 12:17:50,457 [INFO]   LINK: http://localhost:5500/earth_visualizer.html#confirm=ln_Jeca4PskSjoKBijgq_R0j_8vzzhumqPBmGRuByS4
+2026-03-21 12:17:50,457 [INFO] ============================================================
+INFO:     127.0.0.1:58663 - "POST /auth/register HTTP/1.1" 201 Created

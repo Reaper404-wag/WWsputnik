@@ -1,0 +1,32 @@
+# ============================================================
+# requirements.txt — зависимости backend (Python 3.12)
+# Установка: py -3.12 -m pip install -r backend/requirements.txt
+# ============================================================
+
+# --- Web-фреймворк ---
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+
+# --- База данных ---
+sqlalchemy==2.0.40
+# pydantic-settings нужен для чтения .env
+pydantic-settings==2.8.1
+pydantic[email]==2.11.1
+
+# --- Авторизация JWT ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.20
+
+# --- TLE / Орбитальные расчёты ---
+skyfield==1.49
+
+# --- HTTP-клиент (загрузка TLE с Celestrak) ---
+requests==2.32.3
+httpx==0.28.1
+
+# --- Планировщик задач (авто-обновление TLE раз в час) ---
+apscheduler==3.11.0
+
+# --- Утилиты ---
+python-dotenv==1.1.0

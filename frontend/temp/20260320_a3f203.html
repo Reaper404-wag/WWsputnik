@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🌍 Earth Visualizer — 3D Globe & 2D Map</title>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Three.js import map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0e17;
+            --panel-bg: rgba(15, 20, 35, 0.85);
+            --accent: #00bfff;
+            --accent-glow: rgba(0, 191, 255, 0.3);
+            --text: #e0e6f0;
+            --text-dim: #7a8ba8;
+            --border: rgba(0, 191, 255, 0.15);
+            --success: #00e676;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Top Bar */
+        #topBar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 56px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .controls-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .ctrl-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-dim);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(0, 191, 255, 0.12);
+            color: var(--accent);
+        }
+
+        /* Views */
+        #view3D, #view2D {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #view3D { z-index: 1; }
+        #view2D { z-index: 2; opacity: 0; pointer-events: none; background: #000; }
+        #view2D.active { opacity: 1; pointer-events: all; }
+        #view3D.hidden { opacity: 0; pointer-events: none; }
+
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Side Panel */
+        #sidePanel {
+            position: fixed;
+            top: 72px;
+            right: 16px;
+            width: 300px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 500;
+            transition: transform 0.4s ease;
+        }
+
+        #sidePanel.collapsed {
+            transform: translateX(340px);
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-section h3 {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .info-row .label { color: var(--text-dim); font-size: 13px; }
+        .info-row .value { color: var(--text); font-weight: 600; }
+
+        /* Coordinates Overlay */
+        #coordsOverlay {
+            position: fixed;
+            bottom: 48px;
+            left: 16px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 18px;
+            z-index: 500;
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+
+        .coord-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .coord-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+        .coord-value { font-weight: 700; color: var(--accent); }
+
+        /* Zoom Controls */
+        .zoom-controls {
+            position: fixed;
+            bottom: 60px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 500;
+        }
+
+        .zoom-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            color: var(--text);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(0, 191, 255, 0.15);
+            border-color: var(--accent);
+        }
+
+        /* Status Bar */
+        #statusBar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 36px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s;
+        }
+
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader-ring {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(0, 191, 255, 0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loader-text {
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Layer Toggles */
+        .layer-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .layer-toggle label {
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+        }
+
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 11px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            top: 3px;
+            left: 3px;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+        }
+
+        /* Satellite list */
+        .sat-list-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid transparent;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .sat-list-item:hover {
+            background: rgba(0, 191, 255, 0.08);
+            border-color: var(--border);
+        }
+
+        .sat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
+        }
+
+        .sat-name { font-size: 13px; font-weight: 600; }
+        .sat-info { font-size: 11px; color: var(--text-dim); }
+    </style>
+</head>
+<body>
+
+    <div id="loadingScreen">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Загрузка планеты...</div>
+    </div>
+
+    <div id="topBar">
+        <div class="logo">🌍 Earth Visualizer</div>
+        <div class="controls-group">
+            <button class="ctrl-btn" id="panelBtn">☰</button>
+            <button class="ctrl-btn" id="resetBtn">⟲</button>
+        </div>
+    </div>
+
+    <div id="view3D"></div>
+    <div id="view2D"><div id="mapContainer"></div></div>
+
+    <div id="sidePanel">
+        <div class="panel-title">📡 Панель управления</div>
+        <div class="panel-section">
+            <h3>🌐 Информация о виде</h3>
+            <div class="info-row"><span class="label">Режим</span><span class="value" id="infoMode">3D Глобус</span></div>
+            <div class="info-row"><span class="label">Масштаб</span><span class="value" id="infoZoom">—</span></div>
+            <div class="info-row"><span class="label">Центр</span><span class="value" id="infoCenter">0°, 0°</span></div>
+        </div>
+        <div class="panel-section">
+            <h3>🎨 Слои</h3>
+            <div class="layer-toggle"><label>Облака</label><div class="toggle-switch"><input type="checkbox" id="toggleClouds" checked><span class="toggle-slider"></span></div></div>
+            <div class="layer-toggle"><label>Атмосфера</label><div class="toggle-switch"><input type="checkbox" id="toggleAtmosphere" checked><span class="toggle-slider"></span></div></div>
+            <div class="layer-toggle"><label>Звёзды</label><div class="toggle-switch"><input type="checkbox" id="toggleStars" checked><span class="toggle-slider"></span></div></div>
+        </div>
+        <div class="panel-section">
+            <h3>🛰️ Спутники</h3>
+            <div style="text-align: center; padding: 12px; border: 1px dashed var(--border); border-radius: 12px;">
+                🛰️ Модуль готов к подключению TLE
+            </div>
+            <div id="satList" style="margin-top: 10px;"></div>
+        </div>
+        <div class="panel-section">
+            <h3>📊 Статистика</h3>
+            <div class="info-row"><span class="label">FPS</span><span class="value" id="fpsCounter">60</span></div>
+            <div class="info-row"><span class="label">Объекты</span><span class="value" id="objCount">0</span></div>
+            <div class="info-row"><span class="label">Время UTC</span><span class="value" id="utcTime">—</span></div>
+        </div>
+    </div>
+
+    <div id="coordsOverlay">
+        <div class="coord-item"><span class="coord-label">Широта</span><span class="coord-value" id="coordLat">—</span></div>
+        <div class="coord-item"><span class="coord-label">Долгота</span><span class="coord-value" id="coordLon">—</span></div>
+        <div class="coord-item"><span class="coord-label">Высота</span><span class="coord-value" id="coordAlt">—</span></div>
+    </div>
+
+    <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomInBtn">＋</button>
+        <button class="zoom-btn" id="zoomOutBtn">−</button>
+    </div>
+
+    <div id="statusBar">
+        <div class="status-item"><div class="status-dot"></div><span>Система активна</span></div>
+        <div id="clockDisplay"></div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Конфигурация ---
+        const EARTH_RADIUS = 2;
+        const TRANSITION_DISTANCE_THRESHOLD = EARTH_RADIUS + 1.2; // высота ~1.2 → переход в 2D
+
+        let scene, camera, renderer, controls;
+        let earthMesh, cloudsMesh, atmosphereMesh, starsMesh;
+        let currentMode = '3d';
+        let isTransitioning = false;
+        let savedCameraPosition = null;
+        let savedCameraTarget = null;
+        let savedCenter = { lat: 20, lng: 0 };
+        let savedZoom = 3;
+
+        // Leaflet Map
+        let leafletMap = null;
+        let mapContainer = document.getElementById('mapContainer');
+
+        // --- Функции для работы с камерой 3D ---
+        function getCameraTargetLatLng() {
+            const dir = camera.position.clone().normalize();
+            const point = dir.multiplyScalar(EARTH_RADIUS);
+            const lat = Math.asin(point.y / EARTH_RADIUS) * 180 / Math.PI;
+            const lng = Math.atan2(point.z, point.x) * 180 / Math.PI;
+            return { lat, lng };
+        }
+
+        function getCameraDistance() {
+            return camera.position.length();
+        }
+
+        // --- Загрузка текстур (высокое разрешение из CDN, fallback процедурные) ---
+        function loadTextureWithFallback(url, fallbackFunc) {
+            return new Promise((resolve) => {
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.load(url, resolve, () => {
+                    console.warn(`Не удалось загрузить ${url}, использую процедурную`);
+                    resolve(fallbackFunc());
+                });
+            });
+        }
+
+        function createProceduralEarthTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 1024);
+            grad.addColorStop(0, '#1a3a5c');
+            grad.addColorStop(0.3, '#1565C0');
+            grad.addColorStop(0.5, '#1976D2');
+            grad.addColorStop(0.7, '#1565C0');
+            grad.addColorStop(1, '#1a3a5c');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 2048, 1024);
+            ctx.fillStyle = '#2E7D32';
+            const continents = [
+                [[600,180],[750,170],[800,220],[820,310],[780,350],[700,380],[620,350],[550,300],[520,250],[560,200]],
+                [[680,420],[730,440],[750,520],[740,600],[710,680],[660,700],[640,650],[630,550],[650,460]],
+                [[1000,180],[1080,170],[1100,200],[1090,260],[1050,280],[1000,270],[980,230]],
+                [[1020,300],[1100,290],[1140,360],[1150,450],[1120,550],[1060,580],[1010,520],[990,420],[1000,340]],
+                [[1100,140],[1350,120],[1500,160],[1550,240],[1500,300],[1400,340],[1300,320],[1200,300],[1120,260],[1090,200]],
+                [[1450,500],[1540,490],[1580,530],[1570,580],[1520,600],[1460,580],[1440,540]]
+            ];
+            continents.forEach(points => {
+                ctx.beginPath();
+                ctx.moveTo(points[0][0], points[0][1]);
+                for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+                ctx.closePath();
+                ctx.fill();
+            });
+            ctx.fillStyle = '#E0E0E0';
+            ctx.fillRect(0, 0, 2048, 40);
+            ctx.fillStyle = '#ECEFF1';
+            ctx.fillRect(0, 940, 2048, 84);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createProceduralCloudTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fillRect(0, 0, 2048, 1024);
+            for (let i = 0; i < 800; i++) {
+                const x = Math.random() * 2048;
+                const y = Math.random() * 1024;
+                const r = 15 + Math.random() * 70;
+                const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+                grad.addColorStop(0, `rgba(255,255,255,${0.1 + Math.random() * 0.2})`);
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(x - r, y - r, r * 2, r * 2);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createStarField() {
+            const starsGeo = new THREE.BufferGeometry();
+            const count = 8000;
+            const positions = new Float32Array(count * 3);
+            for (let i = 0; i < count; i++) {
+                positions[i*3] = (Math.random() - 0.5) * 200;
+                positions[i*3+1] = (Math.random() - 0.5) * 200;
+                positions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
+            }
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            return new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08 }));
+        }
+
+        async function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e17);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight - 56), 0.1, 200);
+            camera.position.set(0, 1.2, 5.5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight - 56);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('view3D').appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.8;
+            controls.zoomSpeed = 1.0;
+            controls.minDistance = EARTH_RADIUS + 0.2;
+            controls.maxDistance = 12;
+            controls.enablePan = false;
+
+            // Освещение
+            const ambient = new THREE.AmbientLight(0x334466);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(5, 3, 5);
+            scene.add(dirLight);
+            const fillLight = new THREE.PointLight(0x4466aa, 0.3);
+            fillLight.position.set(-2, 1, -3);
+            scene.add(fillLight);
+
+            // Загрузка текстур
+            const earthMap = await loadTextureWithFallback(
+                'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
+                createProceduralEarthTexture
+            );
+            const earthSpecularMap = await loadTextureWithFallback(
+                'https://threejs.org/examples/textures/planets/earth_specular_2048.jpg',
+                () => new THREE.Texture()
+            );
+            const earthNormalMap = await loadTextureWithFallback(
+                'https://threejs.org/examples/textures/planets/earth_normal_2048.jpg',
+                () => new THREE.Texture()
+            );
+            const cloudMap = await loadTextureWithFallback(
+                'https://threejs.org/examples/textures/planets/earth_clouds_1024.png',
+                createProceduralCloudTexture
+            );
+
+            const earthMat = new THREE.MeshPhongMaterial({
+                map: earthMap,
+                specularMap: earthSpecularMap,
+                specular: new THREE.Color('grey'),
+                shininess: 5,
+                normalMap: earthNormalMap,
+                normalScale: new THREE.Vector2(0.8, 0.8)
+            });
+            earthMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS, 128, 128), earthMat);
+            scene.add(earthMesh);
+
+            // Облака
+            const cloudMat = new THREE.MeshPhongMaterial({
+                map: cloudMap,
+                transparent: true,
+                opacity: 0.45,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            cloudsMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS + 0.015, 96, 48), cloudMat);
+            scene.add(cloudsMesh);
+
+            // Атмосфера
+            const atmosMat = new THREE.MeshPhongMaterial({ color: 0x88aaff, transparent: true, opacity: 0.15, side: THREE.BackSide });
+            atmosphereMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS + 0.12, 64, 32), atmosMat);
+            scene.add(atmosphereMesh);
+
+            starsMesh = createStarField();
+            scene.add(starsMesh);
+
+            // Менеджер спутников (демо)
+            class SatelliteManager {
+                constructor(scene) {
+                    this.scene = scene;
+                    this.satellites = [];
+                }
+                addSatellite(name, color = 0x00e676) {
+                    const geo = new THREE.SphereGeometry(0.05, 8, 8);
+                    const mat = new THREE.MeshStandardMaterial({ color, emissive: 0x442200 });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    this.scene.add(mesh);
+                    const sat = { name, mesh, color };
+                    this.satellites.push(sat);
+                    this.updateUI();
+                    return sat;
+                }
+                update(time) {
+                    this.satellites.forEach((sat, i) => {
+                        const angle = time * 0.0005 + i * Math.PI;
+                        const radius = EARTH_RADIUS + 0.4;
+                        sat.mesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.5, Math.sin(angle) * radius);
+                    });
+                }
+                updateUI() {
+                    const list = document.getElementById('satList');
+                    list.innerHTML = this.satellites.map((s, i) => `
+                        <div class="sat-list-item" onclick="window.satMgr && window.satMgr.focusSatellite(${i})">
+                            <div class="sat-dot" style="background: #${s.color.toString(16).padStart(6,'0')}"></div>
+                            <div><div class="sat-name">${s.name}</div><div class="sat-info">Активен</div></div>
+                        </div>
+                    `).join('');
+                }
+                focusSatellite(index) {
+                    const sat = this.satellites[index];
+                    if (sat && controls) {
+                        const targetPos = sat.mesh.position.clone().multiplyScalar(1.2);
+                        animateCameraTo(targetPos, 1000);
+                    }
+                }
+            }
+            const satMgr = new SatelliteManager(scene);
+            window.satMgr = satMgr;
+            setTimeout(() => satMgr.addSatellite('DEMO-SAT', 0x00e676), 1000);
+        }
+
+        // --- Leaflet 2D Map (с подписями стран, городов, работает без ключей) ---
+        function initLeafletMap() {
+            if (leafletMap) return;
+            leafletMap = L.map('mapContainer', {
+                center: [20, 0],
+                zoom: 3,
+                zoomControl: true,
+                attributionControl: true
+            });
+            // Используем слой CartoDB Dark Matter (тёмная тема) с подписями
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                minZoom: 2,
+                maxZoom: 19
+            }).addTo(leafletMap);
+            // Дополнительный слой с метками (названия стран, городов) — поверх тёмного фона
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; CARTO',
+                subdomains: 'abcd',
+                minZoom: 2,
+                maxZoom: 19
+            }).addTo(leafletMap);
+            leafletMap.on('moveend zoomend', () => {
+                if (currentMode !== '2d') return;
+                const center = leafletMap.getCenter();
+                const zoom = leafletMap.getZoom();
+                document.getElementById('infoZoom').textContent = zoom;
+                document.getElementById('infoCenter').textContent = center.lat.toFixed(2) + '°, ' + center.lng.toFixed(2) + '°';
+            });
+            // При движении мыши над картой показываем координаты
+            leafletMap.on('mousemove', (e) => {
+                if (currentMode !== '2d') return;
+                document.getElementById('coordLat').textContent = e.latlng.lat.toFixed(4) + '°';
+                document.getElementById('coordLon').textContent = e.latlng.lng.toFixed(4) + '°';
+                document.getElementById('coordAlt').textContent = '—';
+            });
+        }
+
+        // --- Плавные переходы ---
+        function transitionTo2D() {
+            if (isTransitioning || currentMode !== '3d') return;
+            isTransitioning = true;
+
+            savedCameraPosition = camera.position.clone();
+            savedCameraTarget = controls.target.clone();
+
+            const center = getCameraTargetLatLng();
+            savedCenter = center;
+
+            const dist = getCameraDistance();
+            let zoom = Math.floor(9 - (dist - EARTH_RADIUS) * 0.7);
+            zoom = Math.min(9, Math.max(3, zoom));
+            savedZoom = zoom;
+
+            const container3D = document.getElementById('view3D');
+            const container2D = document.getElementById('view2D');
+            container2D.style.display = 'block';
+            container2D.style.opacity = '0';
+
+            if (!leafletMap) initLeafletMap();
+            leafletMap.setView([savedCenter.lat, savedCenter.lng], savedZoom, { animate: false });
+            container3D.classList.add('hidden');
+            container2D.classList.add('active');
+
+            setTimeout(() => {
+                currentMode = '2d';
+                isTransitioning = false;
+                document.getElementById('infoMode').textContent = '2D Карта';
+                leafletMap.invalidateSize(); // фикс размера после отображения
+            }, 500);
+        }
+
+        function transitionTo3D() {
+            if (isTransitioning || currentMode !== '2d') return;
+            isTransitioning = true;
+
+            if (leafletMap) {
+                const center = leafletMap.getCenter();
+                const zoom = leafletMap.getZoom();
+                savedCenter = { lat: center.lat, lng: center.lng };
+                savedZoom = zoom;
+            }
+
+            const container3D = document.getElementById('view3D');
+            const container2D = document.getElementById('view2D');
+            container3D.classList.remove('hidden');
+            container2D.classList.remove('active');
+            container3D.style.opacity = '0';
+
+            if (savedCameraPosition && savedCameraTarget) {
+                camera.position.copy(savedCameraPosition);
+                controls.target.copy(savedCameraTarget);
+                controls.update();
+            } else {
+                const latRad = savedCenter.lat * Math.PI / 180;
+                const lngRad = savedCenter.lng * Math.PI / 180;
+                const x = EARTH_RADIUS * Math.cos(latRad) * Math.cos(lngRad);
+                const y = EARTH_RADIUS * Math.sin(latRad);
+                const z = EARTH_RADIUS * Math.cos(latRad) * Math.sin(lngRad);
+                const direction = new THREE.Vector3(x, y, z).normalize();
+                let distance = EARTH_RADIUS + (9 - savedZoom) * 0.8;
+                distance = Math.min(20, Math.max(5.5, distance));
+                camera.position.copy(direction.multiplyScalar(distance));
+                controls.target.set(0, 0, 0);
+                controls.update();
+            }
+
+            container3D.style.opacity = '1';
+            setTimeout(() => {
+                currentMode = '3d';
+                isTransitioning = false;
+                document.getElementById('infoMode').textContent = '3D Глобус';
+            }, 500);
+        }
+
+        // --- Обработчик колеса мыши ---
+        function handleWheel(event) {
+            if (isTransitioning) return;
+            const delta = event.deltaY;
+            const isZoomIn = delta < 0;
+
+            if (currentMode === '3d' && isZoomIn) {
+                const dist = getCameraDistance();
+                if (dist < TRANSITION_DISTANCE_THRESHOLD) {
+                    event.preventDefault();
+                    transitionTo2D();
+                }
+            } else if (currentMode === '2d' && !isZoomIn) {
+                event.preventDefault();
+                transitionTo3D();
+            }
+        }
+
+        // --- Вспомогательные функции управления ---
+        function animateCameraTo(targetPos, duration) {
+            const start = camera.position.clone();
+            const startTime = performance.now();
+            function step(now) {
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                camera.position.lerpVectors(start, targetPos, ease);
+                camera.lookAt(0, 0, 0);
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function resetView() {
+            if (currentMode === '2d') {
+                if (leafletMap) leafletMap.setView([20, 0], 3);
+            } else {
+                animateCameraTo(new THREE.Vector3(0, 1.2, 5.5), 1000);
+                controls.target.set(0, 0, 0);
+            }
+        }
+
+        function zoomIn() {
+            if (currentMode === '2d') {
+                if (leafletMap) leafletMap.zoomIn();
+            } else {
+                const dir = camera.position.clone().normalize();
+                const newPos = camera.position.clone().sub(dir.multiplyScalar(0.5));
+                if (newPos.length() > EARTH_RADIUS + 0.3) animateCameraTo(newPos, 300);
+            }
+        }
+
+        function zoomOut() {
+            if (currentMode === '2d') {
+                if (leafletMap) leafletMap.zoomOut();
+            } else {
+                const dir = camera.position.clone().normalize();
+                const newPos = camera.position.clone().add(dir.multiplyScalar(0.5));
+                if (newPos.length() < 12) animateCameraTo(newPos, 300);
+            }
+        }
+
+        function togglePanel() {
+            document.getElementById('sidePanel').classList.toggle('collapsed');
+        }
+
+        // --- Слои ---
+        function toggleClouds() { if (cloudsMesh) cloudsMesh.visible = document.getElementById('toggleClouds').checked; }
+        function toggleAtmosphere() { if (atmosphereMesh) atmosphereMesh.visible = document.getElementById('toggleAtmosphere').checked; }
+        function toggleStars() { if (starsMesh) starsMesh.visible = document.getElementById('toggleStars').checked; }
+
+        // --- Обработчик мыши для координат в 3D ---
+        function onMouseMove3D(event) {
+            if (currentMode !== '3d' || !renderer) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+            const intersects = raycaster.intersectObject(earthMesh);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                const lat = Math.asin(point.y / EARTH_RADIUS) * 180 / Math.PI;
+                const lng = Math.atan2(point.z, point.x) * 180 / Math.PI;
+                document.getElementById('coordLat').textContent = lat.toFixed(4) + '°';
+                document.getElementById('coordLon').textContent = lng.toFixed(4) + '°';
+                const alt = ((camera.position.length() - EARTH_RADIUS) / EARTH_RADIUS * 6371).toFixed(0);
+                document.getElementById('coordAlt').textContent = alt + ' км';
+            }
+        }
+
+        // --- Анимация и обновление ---
+        let frameCount = 0, lastFpsTime = performance.now();
+        function animate(time) {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            frameCount++;
+            if (now - lastFpsTime >= 1000) {
+                document.getElementById('fpsCounter').textContent = frameCount;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+            const utc = new Date();
+            document.getElementById('utcTime').textContent = utc.toUTCString().slice(17, 25);
+            document.getElementById('clockDisplay').textContent = utc.toLocaleTimeString('ru-RU');
+
+            if (currentMode === '3d') {
+                if (earthMesh) earthMesh.rotation.y += 0.0005;
+                if (cloudsMesh) cloudsMesh.rotation.y += 0.0006;
+                if (starsMesh) starsMesh.rotation.y -= 0.0001;
+                if (window.satMgr) window.satMgr.update(time);
+                controls.update();
+                renderer.render(scene, camera);
+                const dist = camera.position.length();
+                document.getElementById('infoZoom').textContent = (dist / EARTH_RADIUS).toFixed(2) + 'x';
+                const center = getCameraTargetLatLng();
+                document.getElementById('infoCenter').textContent = center.lat.toFixed(2) + '°, ' + center.lng.toFixed(2) + '°';
+                document.getElementById('objCount').textContent = scene.children.length;
+            } else if (currentMode === '2d' && leafletMap) {
+                const center = leafletMap.getCenter();
+                const zoom = leafletMap.getZoom();
+                document.getElementById('infoZoom').textContent = zoom;
+                document.getElementById('infoCenter').textContent = center.lat.toFixed(2) + '°, ' + center.lng.toFixed(2) + '°';
+            }
+        }
+
+        // --- Инициализация ---
+        async function init() {
+            await init3D();
+
+            window.addEventListener('resize', () => {
+                if (camera && renderer) {
+                    camera.aspect = window.innerWidth / (window.innerHeight - 56);
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight - 56);
+                }
+                if (leafletMap) leafletMap.invalidateSize();
+            });
+            window.addEventListener('wheel', handleWheel, { passive: false });
+            renderer.domElement.addEventListener('mousemove', onMouseMove3D);
+            document.getElementById('resetBtn').onclick = resetView;
+            document.getElementById('zoomInBtn').onclick = zoomIn;
+            document.getElementById('zoomOutBtn').onclick = zoomOut;
+            document.getElementById('panelBtn').onclick = togglePanel;
+            document.getElementById('toggleClouds').onchange = toggleClouds;
+            document.getElementById('toggleAtmosphere').onchange = toggleAtmosphere;
+            document.getElementById('toggleStars').onchange = toggleStars;
+
+            // Предварительная инициализация карты (но она не показывается, пока не переключимся)
+            // Карта будет создана при первом переходе в 2D.
+
+            setTimeout(() => document.getElementById('loadingScreen').classList.add('hidden'), 1200);
+            animate(0);
+        }
+
+        init();
+    </script>
+</body>
+</html>
